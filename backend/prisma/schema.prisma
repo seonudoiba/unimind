@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Admin/Super Admin
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Content Structure
+model Grade {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  weeks     Week[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Week {
+  id          String   @id @default(cuid())
+  gradeId     String
+  grade       Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  title       String
+  description String?
+  days        Day[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([gradeId, weekNumber])
+}
+
+model Day {
+  id         String   @id @default(cuid())
+  weekId     String
+  week       Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  dayNumber  Int
+  title      String
+  guideName  String   @default("Sunny")
+  steps      Step[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([weekId, dayNumber])
+}
+
+model Step {
+  id            String   @id @default(cuid())
+  dayId         String
+  day           Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  type          String
+  title         String
+  order         Int      @default(0)
+  content       Json
+  audioUrl      String?
+  audioDuration Float?   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Student Progress
+model Student {
+  id         String     @id @default(cuid())
+  name       String
+  grade      String
+  progress   Progress[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  dayId       String
+  dayTitle    String?  // Store the title so we know what was completed even if day is deleted
+  dayNumber   Int?     // Store the day number
+  weekNumber  Int?     // Store the week number
+  gradeName   String?  // Store the grade name
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, dayId])
+}

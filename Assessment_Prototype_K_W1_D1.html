@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniMindKidz — Assessment Excerpt (K, Week 1, Day 1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF8EA; --sun:#F3A93E; --sun-dark:#D6862A; --sky:#6FC3E4;
+    --grass:#5DA377; --navy:#33475B; --coral:#E86A55; --white:#FFFFFF;
+    --shadow: 0 10px 30px rgba(51,71,91,0.15);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Nunito', sans-serif; background: linear-gradient(180deg, #CDEBF7 0%, var(--cream) 45%);
+    color:var(--navy); min-height:100vh; display:flex; align-items:center; justify-content:center; overflow-x:hidden;
+  }
+  .stage{ width:100%; max-width:520px; min-height:100vh; background:var(--cream); position:relative; display:flex; flex-direction:column; box-shadow: var(--shadow); }
+  @media (min-width:560px){ .stage{ min-height: 780px; margin:24px 0; border-radius:28px; overflow:hidden; } }
+
+  .progress{ display:flex; gap:8px; justify-content:center; padding:16px 0 4px; }
+  .progress .seg{ height:8px; width:52px; border-radius:6px; background:#E3DCC8; transition: background .3s; }
+  .progress .seg.active{ background: var(--sun); }
+  .progress .seg.done{ background: var(--grass); }
+
+  #screenRoot{
+    display:flex; flex:1; flex-direction:column; align-items:center; justify-content:center;
+    padding: 20px 28px 32px; text-align:center; animation: fadein .4s ease;
+  }
+  @keyframes fadein{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  h1{ font-family:'Baloo 2', sans-serif; color: var(--navy); font-size: 1.7rem; margin: 6px 0 4px; }
+  .eyebrow{ font-family:'Baloo 2', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: .72rem; color: var(--sun-dark); font-weight:700; margin-bottom:2px; }
+  p.lead{ font-size:1.05rem; line-height:1.5; margin: 6px 0 18px; color:#4A5D6D; }
+
+  .guide-wrap{ position:relative; width:180px; height:180px; margin: 10px auto 6px; }
+  .rays{ position:absolute; inset:0; animation: spin 40s linear infinite; }
+  .ray{ position:absolute; left:50%; top:50%; width:14px; height:88px; margin-left:-7px; background: var(--sun); border-radius:8px; transform-origin: 50% 0%; }
+  .sunny-face{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:118px; height:118px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #FFD98A, var(--sun) 70%);
+    box-shadow: 0 8px 18px rgba(214,134,42,.35), inset 0 -8px 14px rgba(214,134,42,.25);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sunny-eyes{ position:absolute; top:44px; display:flex; gap:22px; }
+  .eye{ width:10px; height:12px; background:var(--navy); border-radius:50%; }
+  .sunny-mouth{ position:absolute; top:66px; width:34px; height:16px; border: 5px solid var(--navy); border-top:none; border-radius: 0 0 30px 30px; }
+
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  .breathe .rays{ animation: spin 40s linear infinite, breathe 8s ease-in-out infinite; }
+  @keyframes breathe{ 0%,100%{ transform: scale(1);} 50%{ transform: scale(1.35);} }
+  .breath-caption{ font-family:'Baloo 2', sans-serif; font-size:1.3rem; font-weight:700; color: var(--sun-dark); height: 34px; margin-top: 10px; }
+  .breath-count{ font-size:.9rem; color:#7A8B99; margin-bottom:6px; }
+
+  .friend{ width:70px; height:60px; border-radius: 50% 50% 46% 46%/60% 60% 40% 40%; display:inline-flex; align-items:center; justify-content:center; position:relative; box-shadow: 0 6px 12px rgba(0,0,0,.08); }
+  .friend .ear{ position:absolute; top:-14px; width:18px; height:24px; border-radius:50%; }
+  .friend .ear.l{ left:8px; transform: rotate(-15deg); } .friend .ear.r{ right:8px; transform: rotate(15deg); }
+  .friend .fe{ width:6px; height:7px; background:var(--navy); border-radius:50%; } .friend .fe-row{ display:flex; gap:14px; }
+  .bunny{ background:#F6D8C6; } .bunny .ear{ background:#F6D8C6; }
+  .bear{ background:#C9A27A; } .bear .ear{ background:#C9A27A; }
+  .fox{ background:#E8955C; } .fox .ear{ background:#E8955C; }
+  .friend-row{ display:flex; gap:16px; justify-content:center; margin: 14px 0 6px; }
+  .bounce{ animation: bounce 1.8s ease-in-out infinite; } .bounce:nth-child(2){ animation-delay:.2s; } .bounce:nth-child(3){ animation-delay:.4s; }
+  @keyframes bounce{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-10px);} }
+
+  .story-art{ width:100%; max-width:320px; height:150px; background: linear-gradient(180deg, #DDF1FA 0%, #EFF9EC 100%); border-radius:20px; display:flex; align-items:center; justify-content:center; margin-bottom: 14px; position:relative; overflow:hidden; }
+  .ground{ position:absolute; bottom:0; left:0; right:0; height:28px; background: var(--grass); opacity:.5; border-radius: 0 0 20px 20px; }
+
+  .btn{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:1.05rem; border:none; border-radius:18px; padding:14px 30px; background: var(--sun); color:#fff; cursor:pointer; box-shadow: 0 6px 0 var(--sun-dark); transition: transform .08s ease; }
+  .btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 var(--sun-dark); }
+  .btn.secondary{ background: var(--sky); box-shadow: 0 6px 0 #4A9FC0; } .btn.secondary:active{ box-shadow: 0 2px 0 #4A9FC0; }
+  .row-btns{ display:flex; gap:12px; margin-top: 14px; flex-wrap:wrap; justify-content:center; }
+
+  .nav-arrow{ position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:50%; background:#fff; border:none; box-shadow: var(--shadow); font-size:1.3rem; color:var(--sun-dark); cursor:pointer; z-index:6; }
+  .nav-arrow.back{ left:10px; }
+
+  .replay-btn{ display:flex; align-items:center; gap:6px; background:#fff; border:2px solid var(--sun); color:var(--sun-dark); border-radius:14px; padding:8px 14px; font-family:'Nunito'; font-weight:700; font-size:.85rem; cursor:pointer; margin-top:10px; }
+
+  .quiz-options{ display:flex; flex-direction:column; gap:12px; width:100%; margin-top: 10px; }
+  .opt{ font-family:'Baloo 2', sans-serif; font-weight:600; font-size:1.05rem; background:#fff; border:3px solid #E3DCC8; border-radius:16px; padding:14px 18px; cursor:pointer; display:flex; align-items:center; gap:12px; transition: all .15s; }
+  .opt:hover{ border-color: var(--sky); }
+  .opt.correct{ background:#E4F4E8; border-color: var(--grass); }
+  .opt.wrong{ background:#FBE7E3; border-color: var(--coral); }
+  .opt .emoji{ font-size:1.6rem; }
+  .feedback{ font-family:'Baloo 2', sans-serif; font-weight:700; min-height:30px; margin-top:8px; font-size:1.05rem; }
+  .feedback.good{ color: var(--grass); } .feedback.retry{ color: var(--coral); }
+
+  .stars{ font-size:2.4rem; letter-spacing:6px; margin: 4px 0 10px; }
+  .badge{ width:120px; height:120px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #FFE8B8, var(--sun) 75%); display:flex; align-items:center; justify-content:center; font-size:2.6rem; margin: 10px auto 16px; box-shadow: 0 10px 24px rgba(214,134,42,.4); }
+
+  .mute-toggle{ position:absolute; top:16px; right:16px; z-index:6; background:#fff; border:none; border-radius:50%; width:40px; height:40px; box-shadow: var(--shadow); font-size:1.1rem; cursor:pointer; }
+  .day-tag{ position:absolute; top:16px; left:16px; z-index:6; background: var(--navy); color:#fff; font-family:'Baloo 2'; font-size:.75rem; font-weight:700; padding:6px 12px; border-radius:12px; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="day-tag">K · WK 1 · DAY 1</div>
+  <button class="mute-toggle" id="muteBtn" title="Turn narration on/off">🔊</button>
+  <div class="progress" id="progress">
+    <div class="seg" data-seg="meditation"></div>
+    <div class="seg" data-seg="lesson"></div>
+    <div class="seg" data-seg="reflection"></div>
+  </div>
+  <section id="screenRoot"></section>
+  <button class="nav-arrow back" id="backArrow" style="display:none" onclick="goBack()">‹</button>
+</div>
+
+<script>
+/* ---------- ASSESSMENT EXCERPT: Kindergarten, Week 1 "Belonging & Community", Day 1 only ---------- */
+/* NOTE: This is a deliberately trimmed export of the full 90-day prototype, containing only the
+   single day used for the paid skill assessment. Full curriculum, additional guide characters,
+   and the multi-grade day-menu/browse system are intentionally not included here. */
+
+const DAY = {
+  title: "Welcome to Our Class Family",
+  guideName: "Sunny",
+  meditation: { name: "Hello Breathing", intro: "Put one hand on your belly. Let's breathe with Sunny. Breathe in slow through your nose. Now breathe out slow through your mouth. This is how we say hello to our bodies before we say hello to our friends.", cycles: 5 },
+  story: [
+    { title: "Sunny's First Day", text: "Sunny is starting at a brand-new forest classroom today. Sunny doesn't know anyone yet, and feels very small and a little scared.", visual: "sunny-alone" },
+    { title: "Standing Alone", text: "One by one, the forest-friend classmates notice Sunny standing alone by the door.", visual: "friends-static" },
+    { title: "Come Sit With Us!", text: "Instead of looking away, they wave, scoot over, and say: “Come sit with us!” 👋", visual: "friends-bounce" },
+    { title: "Part of the Family", text: "By the end of the day, Sunny feels warm and happy — like part of the class family.", visual: "sunny-big" }
+  ],
+  quiz: [
+    { question: "How did Sunny feel at the start?", options: [
+      {emoji:"😟", text:"A little scared and small", correct:true},
+      {emoji:"😄", text:"Super excited and jumping", correct:false},
+      {emoji:"😴", text:"Sleepy and tired", correct:false}
+    ]},
+    { question: "What did the friends do to help?", options: [
+      {emoji:"🙈", text:"They looked away", correct:false},
+      {emoji:"👋", text:"They waved and said “come sit with us”", correct:true},
+      {emoji:"🏃", text:"They ran outside", correct:false}
+    ]}
+  ],
+  reflection: { title: "The Welcome Wave", text: "Now it's your turn! Stand up, say your name out loud, and give the class a big wave. Ask a friend: “What's one thing that makes you feel welcome?”" }
+};
+
+/* ---------- SPEECH (browser TTS — the piece Phase 1 replaces with hosted audio) ---------- */
+const synth = window.speechSynthesis;
+let muted = false;
+let chosenVoice = null;
+let currentUtterance = null;
+let audioUnlocked = false;
+
+function loadVoices(){
+  const voices = synth.getVoices();
+  if(voices && voices.length){ chosenVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || voices[0]; }
+}
+loadVoices();
+if('onvoiceschanged' in synth){ synth.onvoiceschanged = loadVoices; }
+
+function unlockAudio(){
+  if(audioUnlocked || !('speechSynthesis' in window)) return;
+  audioUnlocked = true;
+  const warm = new SpeechSynthesisUtterance(' ');
+  warm.volume = 1;
+  synth.speak(warm);
+}
+document.addEventListener('click', unlockAudio, { once:false, capture:true });
+
+function speak(text, onEndCb){
+  if(muted || !('speechSynthesis' in window)){ if(onEndCb) onEndCb(); return null; }
+  synth.cancel();
+  synth.resume();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.92; utter.pitch = 1.15; utter.volume = 1;
+  if(chosenVoice) utter.voice = chosenVoice;
+  currentUtterance = utter;
+  utter.onend = () => { if(currentUtterance === utter) currentUtterance = null; if(onEndCb) onEndCb(); };
+  setTimeout(() => { synth.speak(utter); }, 60);
+  return utter;
+}
+
+/* ---------- VISUALS: Sunny guide + generic forest-friend trio ---------- */
+function raysHTML(count=8){
+  let out = '';
+  for(let i=0;i<count;i++){ out += `<div class="ray" style="transform:rotate(${i*(360/count)}deg)"></div>`; }
+  return out;
+}
+function sunnyHTML(size, breathing){
+  const scale = size/180;
+  return `
+    <div class="guide-wrap ${breathing?'breathe':''}" style="width:${size}px;height:${size}px;">
+      <div class="rays">${raysHTML(8)}</div>
+      <div class="sunny-face" style="width:${118*scale}px;height:${118*scale}px;">
+        <div class="sunny-eyes" style="top:${44*scale}px;gap:${22*scale}px;">
+          <div class="eye" style="width:${10*scale}px;height:${12*scale}px;"></div>
+          <div class="eye" style="width:${10*scale}px;height:${12*scale}px;"></div>
+        </div>
+        <div class="sunny-mouth" style="top:${66*scale}px;width:${34*scale}px;height:${16*scale}px;border-width:${Math.max(3,5*scale)}px;"></div>
+      </div>
+    </div>`;
+}
+function friendsHTML(bounce){
+  const kinds = ['bunny','bear','fox'];
+  return `<div class="friend-row">` + kinds.map(k => `
+    <div class="friend ${k} ${bounce?'bounce':''}">
+      <div class="ear l"></div><div class="ear r"></div>
+      <div class="fe-row"><div class="fe"></div><div class="fe"></div></div>
+    </div>`).join('') + `</div>`;
+}
+
+/* ---------- SCREEN MODEL (single day only) ---------- */
+function buildScreens(){
+  const list = [];
+  list.push({ type:'daystart' });
+  list.push({ type:'meditation' });
+  DAY.story.forEach((s, si) => list.push({ type:'story', slide: si }));
+  DAY.quiz.forEach((q, qi) => list.push({ type:'quiz', q: qi }));
+  list.push({ type:'reflect' });
+  list.push({ type:'done' });
+  return list;
+}
+const screens = buildScreens();
+let idx = 0;
+let breathingInterval = null;
+
+/* localStorage stand-in for the "mark complete" persistence the assessment asks for.
+   Production build should swap this for the real backend. */
+const PROGRESS_KEY = 'unimindkidz_assessment_progress';
+function markDayComplete(){ localStorage.setItem(PROGRESS_KEY, 'complete'); }
+function isDayComplete(){ return localStorage.getItem(PROGRESS_KEY) === 'complete'; }
+
+function renderDayStart(){
+  return `
+    <div class="eyebrow">UniMindKidz · Kindergarten · Week 1</div>
+    <h1>${DAY.title}</h1>
+    ${sunnyHTML(180, false)}
+    <p class="lead">Tap Start to breathe, learn, and play with ${DAY.guideName}!</p>
+    <button class="btn" onclick="goNext()">▶ Start Day 1</button>
+    ${isDayComplete() ? `<p style="margin-top:14px;color:var(--grass);font-weight:700;">✓ Already marked complete on this device</p>` : ''}
+  `;
+}
+function renderMeditation(){
+  const m = DAY.meditation;
+  return `
+    <div class="eyebrow">Breathe with ${DAY.guideName}</div>
+    <h1>${m.name}</h1>
+    ${sunnyHTML(180, true)}
+    <div class="breath-caption" id="breathCaption">Get ready...</div>
+    <div class="breath-count" id="breathCount">Breath 0 of ${m.cycles}</div>
+    <button class="btn" id="breatheNextBtn" style="visibility:hidden" onclick="goNext()">Next: Our Story →</button>
+  `;
+}
+function renderStory(slideIdx){
+  const s = DAY.story[slideIdx];
+  const isLast = slideIdx === DAY.story.length - 1;
+  let visual = '';
+  if(s.visual === 'sunny-alone') visual = `<div class="story-art">${sunnyHTML(90,false)}<div class="ground"></div></div>`;
+  else if(s.visual === 'sunny-big') visual = sunnyHTML(130,false);
+  else if(s.visual === 'friends-static') visual = `<div class="story-art">${friendsHTML(false)}<div class="ground"></div></div>`;
+  else if(s.visual === 'friends-bounce') visual = `<div class="story-art">${friendsHTML(true)}<div class="ground"></div></div>`;
+  return `
+    <div class="eyebrow">Our Story</div>
+    <h1>${s.title}</h1>
+    ${visual}
+    <p class="lead" id="storyText">${s.text}</p>
+    <button class="replay-btn" onclick="speak(document.getElementById('storyText').innerText)">🔊 Read again</button>
+    <div class="row-btns">
+      <button class="btn" onclick="goNext()">${isLast ? "Let's Check In →" : "Next →"}</button>
+    </div>
+  `;
+}
+function renderQuiz(qIdx){
+  const q = DAY.quiz[qIdx];
+  const opts = q.options.map(o => `<button class="opt" data-correct="${o.correct}" onclick="answerQuiz(this)"><span class="emoji">${o.emoji}</span> ${o.text}</button>`).join('');
+  return `
+    <div class="eyebrow">Check-In</div>
+    <h1>${q.question}</h1>
+    <div class="quiz-options" id="quizOpts">${opts}</div>
+    <div class="feedback" id="quizFeedback"></div>
+  `;
+}
+function renderReflect(){
+  const r = DAY.reflection;
+  return `
+    <div class="eyebrow">Reflection</div>
+    <h1>${r.title}</h1>
+    ${sunnyHTML(110,false)}
+    <p class="lead" id="reflectText">${r.text}</p>
+    <button class="replay-btn" onclick="speak(document.getElementById('reflectText').innerText)">🔊 Read again</button>
+    <div class="row-btns"><button class="btn" onclick="goNext()">I did it! →</button></div>
+  `;
+}
+function renderDone(){
+  return `
+    <div class="eyebrow">Week 1, Day 1 Complete</div>
+    <h1>You did it!</h1>
+    <div class="badge">⭐</div>
+    <div class="stars">⭐⭐⭐</div>
+    <p class="lead">Nice work finishing this assessment day with Sunny!</p>
+    <div class="row-btns">
+      <button class="btn secondary" onclick="restart()">↺ Play Again</button>
+    </div>
+  `;
+}
+
+function getNarration(s){
+  if(s.type === 'daystart') return `${DAY.title}. Tap Start to breathe, learn, and play with Sunny!`;
+  if(s.type === 'story') return DAY.story[s.slide].text;
+  if(s.type === 'quiz') return DAY.quiz[s.q].question + " Tap your answer.";
+  if(s.type === 'reflect') return DAY.reflection.text;
+  if(s.type === 'done') return "You did it! Nice work finishing this assessment day with Sunny!";
+  return '';
+}
+
+function updateProgress(s){
+  const map = { daystart:null, meditation:'meditation', story:'lesson', quiz:'lesson', reflect:'reflection', done:'reflection' };
+  const active = map[s.type];
+  const order = ['meditation','lesson','reflection'];
+  document.querySelectorAll('.seg').forEach(seg => {
+    const name = seg.dataset.seg;
+    seg.classList.remove('active','done');
+    if(active){
+      const ai = order.indexOf(active), si = order.indexOf(name);
+      if(si < ai) seg.classList.add('done');
+      if(si === ai) seg.classList.add('active');
+    }
+  });
+}
+
+function render(shouldSpeak){
+  clearInterval(breathingInterval);
+  const s = screens[idx];
+  let html = '';
+  if(s.type === 'daystart') html = renderDayStart();
+  else if(s.type === 'meditation') html = renderMeditation();
+  else if(s.type === 'story') html = renderStory(s.slide);
+  else if(s.type === 'quiz') html = renderQuiz(s.q);
+  else if(s.type === 'reflect') html = renderReflect();
+  else if(s.type === 'done') html = renderDone();
+
+  const root = document.getElementById('screenRoot');
+  root.style.animation = 'none';
+  root.innerHTML = html;
+  void root.offsetWidth;
+  root.style.animation = '';
+
+  updateProgress(s);
+  document.getElementById('backArrow').style.display = (idx > 0) ? 'block' : 'none';
+
+  if(s.type === 'done'){ markDayComplete(); }
+
+  if(shouldSpeak){
+    if(s.type === 'meditation'){
+      speak(DAY.meditation.intro, () => startBreathing());
+    } else {
+      const text = getNarration(s);
+      if(text) speak(text);
+    }
+  }
+}
+
+function goNext(){ if(idx < screens.length - 1){ idx++; render(true); } }
+function goBack(){ if(idx > 0){ idx--; render(true); } }
+function restart(){ idx = 0; render(true); }
+
+function startBreathing(){
+  const cycles = DAY.meditation.cycles;
+  clearInterval(breathingInterval);
+  const caption = document.getElementById('breathCaption');
+  const count = document.getElementById('breathCount');
+  const nextBtn = document.getElementById('breatheNextBtn');
+  if(!caption || !count || !nextBtn) return;
+  nextBtn.style.visibility = 'hidden';
+  let cycle = 0;
+  function cycleStep(){
+    if(cycle >= cycles){
+      caption.textContent = "Great job breathing!";
+      count.textContent = "All done ✓";
+      nextBtn.style.visibility = 'visible';
+      clearInterval(breathingInterval);
+      return;
+    }
+    cycle++;
+    count.textContent = `Breath ${cycle} of ${cycles}`;
+    caption.textContent = "Breathe in...";
+    speak("Breathe in");
+    setTimeout(() => {
+      const c = document.getElementById('breathCaption');
+      if(c){ c.textContent = "Breathe out..."; speak("Breathe out"); }
+    }, 3800);
+  }
+  cycleStep();
+  breathingInterval = setInterval(cycleStep, 7600);
+}
+
+function answerQuiz(btn){
+  const opts = document.querySelectorAll('#quizOpts .opt');
+  const feedback = document.getElementById('quizFeedback');
+  const isCorrect = btn.dataset.correct === 'true';
+  opts.forEach(o => o.style.pointerEvents = 'none');
+  if(isCorrect){
+    btn.classList.add('correct');
+    feedback.textContent = "Yes! Great listening! ⭐";
+    feedback.className = 'feedback good';
+    speak("Yes! Great listening!");
+    setTimeout(() => { goNext(); }, 1400);
+  } else {
+    btn.classList.add('wrong');
+    feedback.textContent = "Not quite — let's try again!";
+    feedback.className = 'feedback retry';
+    speak("Not quite, let's try again");
+    setTimeout(() => {
+      btn.classList.remove('wrong');
+      opts.forEach(o => o.style.pointerEvents = 'auto');
+      feedback.textContent = '';
+    }, 1200);
+  }
+}
+
+document.getElementById('muteBtn').addEventListener('click', (e) => {
+  muted = !muted;
+  e.target.textContent = muted ? '🔇' : '🔊';
+  if(muted) synth.cancel();
+});
+
+/* initial render */
+render(false);
+</script>
+</body>
+</html>
