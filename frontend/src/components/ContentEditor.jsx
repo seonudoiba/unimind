@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import AudioSlotManager, { formatDuration } from './AudioSlotManager';
 
 const ContentEditor = ({ grade, week, day, grades, onSave, onCancel }) => {
+  const [activeTab, setActiveTab] = useState('setup'); // 'setup' | 'step-0' | 'step-1' ...
   const [formData, setFormData] = useState(() => {
     if (day) {
       return {
-        gradeId: grade?.id || '',
-        weekId: week?.id || '',
+        gradeId: grade?.id || grades[0]?.id || '',
+        weekId: week?.id || grades[0]?.weeks[0]?.id || '',
         dayNumber: day.dayNumber || 1,
         title: day.title || '',
         guideName: day.guideName || 'Sunny',
@@ -144,7 +145,6 @@ const ContentEditor = ({ grade, week, day, grades, onSave, onCancel }) => {
   });
 
   const [selectedGrade, setSelectedGrade] = useState(formData.gradeId);
-  const [activeStepTab, setActiveStepTab] = useState(0);
 
   const emojiOptions = ['😊', '😟', '😄', '😴', '🙈', '👋', '🏃', '🤔', '⭐', '🌟', '❤️', '💪', '🌈', '🎉', '🎊', '🦁', '🦉', '🐢', '🐰', '🌸', '✨'];
   const visualOptions = [
@@ -193,20 +193,22 @@ const ContentEditor = ({ grade, week, day, grades, onSave, onCancel }) => {
           ? { text: 'Turn to your neighbor and share a smile!', audioUrl: null, audioDuration: 0 }
           : { message: 'Great job today!', badge: '⭐', audioUrl: null, audioDuration: 0 }
     };
+    const newIndex = formData.steps.length;
     setFormData({
       ...formData,
       steps: [...formData.steps, newStep]
     });
-    setActiveStepTab(formData.steps.length);
+    setActiveTab(`step-${newIndex}`);
   };
 
   const handleRemoveStep = (index) => {
     if (window.confirm(`Delete Step ${index + 1} (${formData.steps[index].type})?`)) {
+      const updated = formData.steps.filter((_, i) => i !== index);
       setFormData({
         ...formData,
-        steps: formData.steps.filter((_, i) => i !== index)
+        steps: updated
       });
-      setActiveStepTab(Math.max(0, index - 1));
+      setActiveTab(updated.length > 0 ? `step-${Math.max(0, index - 1)}` : 'setup');
     }
   };
 
@@ -381,7 +383,6 @@ const ContentEditor = ({ grade, week, day, grades, onSave, onCancel }) => {
         topAudioUrl = step.content.introAudioUrl;
         topAudioDuration = step.content.introAudioDuration || topAudioDuration;
       } else if (step.type === 'story' && step.content?.slides?.length > 0) {
-        // top-level fallback
         topAudioUrl = step.content.slides[0]?.audioUrl || topAudioUrl;
         topAudioDuration = step.content.slides[0]?.audioDuration || topAudioDuration;
       } else if (step.type === 'reflection' && step.content?.audioUrl) {
@@ -406,677 +407,847 @@ const ContentEditor = ({ grade, week, day, grades, onSave, onCancel }) => {
     });
   };
 
-  const currentStep = formData.steps[activeStepTab];
+  // Calculate audio stats for this lesson
+  let totalAudioSlots = 0;
+  let recordedAudioSlots = 0;
+  formData.steps.forEach(step => {
+    if (step.type === 'meditation') {
+      totalAudioSlots++;
+      if (step.content?.introAudioUrl || step.audioUrl) recordedAudioSlots++;
+    } else if (step.type === 'story') {
+      (step.content?.slides || []).forEach(slide => {
+        totalAudioSlots++;
+        if (slide.audioUrl) recordedAudioSlots++;
+      });
+    } else if (step.type === 'quiz') {
+      (step.content?.questions || []).forEach(q => {
+        totalAudioSlots++;
+        if (q.audioUrl) recordedAudioSlots++;
+      });
+    } else if (step.type === 'reflection') {
+      totalAudioSlots++;
+      if (step.content?.audioUrl || step.audioUrl) recordedAudioSlots++;
+    } else if (step.type === 'completion') {
+      totalAudioSlots++;
+      if (step.content?.audioUrl || step.audioUrl) recordedAudioSlots++;
+    }
+  });
+
+  const activeStepIdx = activeTab.startsWith('step-') ? parseInt(activeTab.replace('step-', ''), 10) : null;
+  const currentStep = activeStepIdx !== null ? formData.steps[activeStepIdx] : null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-soft p-4 sm:p-6 border border-[#E3DCC8] max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-wrap justify-between items-center pb-4 mb-4 border-b border-[#E3DCC8]">
-        <div>
-          <span className="eyebrow text-xs">Denise / Admin Content Studio</span>
-          <h2 className="font-baloo text-xl sm:text-2xl text-navy">
-            {day ? '✏️ Edit Lesson Day & Audio Narration' : '📝 Create New Lesson Day & Audio'}
-          </h2>
+    <div className="bg-white rounded-2xl shadow-soft-hover border border-[#E3DCC8] flex flex-col max-h-[92vh] overflow-hidden">
+      {/* Studio Header Bar */}
+      <div className="px-6 py-4 border-b border-[#E3DCC8] bg-white flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sun/15 border border-sun/30 flex items-center justify-center text-xl">
+            {day ? '✏️' : '✨'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#7A8B99]">Curriculum Studio</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cream border border-[#E3DCC8] font-bold text-navy">
+                {recordedAudioSlots}/{totalAudioSlots} Audio Clips
+              </span>
+            </div>
+            <h2 className="font-baloo font-bold text-navy text-xl">
+              {formData.title ? formData.title : (day ? 'Edit Lesson Day' : 'Create New Lesson Day')}
+            </h2>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3">
           <button
             type="button"
-            className="btn-secondary text-xs sm:text-sm py-1.5 px-3 sm:px-4"
+            className="px-4 py-2 rounded-xl border border-[#E3DCC8] bg-white hover:bg-cream text-navy font-baloo font-bold text-xs transition-all"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="btn-primary text-xs sm:text-sm py-1.5 px-4 sm:px-6"
+            className="btn-primary text-xs py-2 px-6 shadow-md"
             onClick={handleSubmit}
           >
-            💾 Save Lesson
+            💾 Save & Publish Lesson
           </button>
         </div>
       </div>
 
-      {/* Basic Lesson Information */}
-      <div className="bg-cream rounded-xl p-4 border border-[#E3DCC8] mb-5">
-        <h3 className="font-baloo font-bold text-navy text-sm mb-3">📍 Lesson Day Setup</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-          <div>
-            <label className="block font-baloo font-semibold text-navy text-xs mb-1">Grade</label>
-            <select
-              className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-              value={formData.gradeId}
-              onChange={(e) => {
-                setSelectedGrade(e.target.value);
-                const g = grades.find((gr) => gr.id === e.target.value);
-                setFormData({
-                  ...formData,
-                  gradeId: e.target.value,
-                  weekId: g?.weeks[0]?.id || ''
-                });
-              }}
-            >
-              {grades.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Main Studio Body: 2-Column Desktop Grid */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Step Navigator Rail (Desktop) */}
+        <div className="w-72 border-r border-[#E3DCC8] bg-[#FAF7F0] p-4 flex flex-col justify-between overflow-y-auto hidden md:flex">
+          <div className="space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#9AA8B4]">
+              Lesson Structure & Steps
+            </div>
 
-          <div>
-            <label className="block font-baloo font-semibold text-navy text-xs mb-1">Week</label>
-            <select
-              className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-              value={formData.weekId}
-              onChange={(e) => setFormData({ ...formData, weekId: e.target.value })}
+            {/* General Setup Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('setup')}
+              className={`w-full flex items-center justify-between p-3 rounded-xl font-baloo text-xs text-left transition-all ${
+                activeTab === 'setup'
+                  ? 'bg-sun text-white font-bold shadow-sm'
+                  : 'bg-white text-navy hover:bg-white/80 border border-[#E3DCC8]'
+              }`}
             >
-              <option value="">Select a week</option>
-              {grades
-                .find((g) => g.id === selectedGrade)
-                ?.weeks?.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    Week {w.weekNumber}: {w.title}
-                  </option>
+              <div className="flex items-center gap-2">
+                <span>⚙️</span>
+                <span>Lesson Setup & Metadata</span>
+              </div>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${activeTab === 'setup' ? 'bg-white/20 text-white' : 'bg-cream text-[#7A8B99]'}`}>
+                Day {formData.dayNumber}
+              </span>
+            </button>
+
+            {/* Step List */}
+            <div className="space-y-1.5 pt-2">
+              <div className="flex items-center justify-between px-1 text-[11px] font-bold text-[#7A8B99]">
+                <span>5-Step Timeline</span>
+                <span className="text-[10px] text-grass font-bold">{recordedAudioSlots}/{totalAudioSlots} 🎙️</span>
+              </div>
+
+              {formData.steps.map((step, idx) => {
+                const isStepActive = activeTab === `step-${idx}`;
+                const stepHasAudio =
+                  step.audioUrl ||
+                  step.content?.introAudioUrl ||
+                  step.content?.slides?.some((s) => s.audioUrl) ||
+                  step.content?.questions?.some((q) => q.audioUrl) ||
+                  step.content?.audioUrl;
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setActiveTab(`step-${idx}`)}
+                    className={`p-3 rounded-xl cursor-pointer transition-all border flex items-center justify-between gap-2 ${
+                      isStepActive
+                        ? 'bg-white border-sun shadow-sm ring-2 ring-sun/20'
+                        : 'bg-white/70 hover:bg-white border-[#E3DCC8]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-full bg-navy text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="truncate">
+                        <p className="font-baloo font-bold text-xs text-navy truncate">
+                          {step.title || step.type.toUpperCase()}
+                        </p>
+                        <p className="text-[10px] text-[#7A8B99] capitalize">
+                          {step.type}
+                          {step.type === 'story' && ` (${step.content?.slides?.length || 0} slides)`}
+                          {step.type === 'quiz' && ` (${step.content?.questions?.length || 0} Qs)`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {stepHasAudio ? (
+                        <span className="text-xs text-grass font-bold" title="Custom audio attached">🎙️</span>
+                      ) : (
+                        <span className="text-xs text-[#9AA8B4]" title="TTS fallback">💬</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Step Dropdown / Buttons */}
+            <div className="pt-3 border-t border-[#E3DCC8]/80">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-[#9AA8B4] mb-2">
+                + Add Extra Step
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {['meditation', 'story', 'quiz', 'reflection', 'completion'].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => handleAddStep(type)}
+                    className="p-1.5 bg-white hover:bg-sun/15 border border-[#E3DCC8] rounded-lg text-[10px] font-baloo font-bold text-navy capitalize transition-colors text-center"
+                  >
+                    + {type}
+                  </button>
                 ))}
-            </select>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block font-baloo font-semibold text-navy text-xs mb-1">Day Number</label>
-            <input
-              type="number"
-              min="1"
-              max="5"
-              className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-              value={formData.dayNumber}
-              onChange={(e) => setFormData({ ...formData, dayNumber: parseInt(e.target.value) || 1 })}
-            />
+          <div className="pt-4 border-t border-[#E3DCC8] text-[11px] text-[#7A8B99]">
+            💡 Studio Tip: Real voice uploads take precedence over TTS automatically.
           </div>
+        </div>
 
-          <div>
-            <label className="block font-baloo font-semibold text-navy text-xs mb-1">Guide Character</label>
-            <select
-              className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-              value={formData.guideName}
-              onChange={(e) => setFormData({ ...formData, guideName: e.target.value })}
+        {/* Right Form Canvas (Desktop Full Width) */}
+        <div className="flex-1 p-6 overflow-y-auto bg-white">
+          {/* Mobile step selector bar */}
+          <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 border-b border-[#E3DCC8]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('setup')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-baloo font-bold whitespace-nowrap ${
+                activeTab === 'setup' ? 'bg-sun text-white' : 'bg-cream text-navy'
+              }`}
             >
-              <option>Sunny</option>
-              <option>Owl</option>
-              <option>Turtle</option>
-              <option>Rabbit</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block font-baloo font-semibold text-navy text-xs mb-1">Day Title</label>
-          <input
-            type="text"
-            className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-sm focus:border-sun focus:outline-none bg-white"
-            placeholder="e.g., Welcome to Our Class Family"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          />
-        </div>
-      </div>
-
-      {/* Step Tabs Navigation */}
-      <div className="mb-4">
-        <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-          <span className="font-baloo font-bold text-navy text-sm">
-            5-Part Lesson Structure ({formData.steps.length} Steps)
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {['meditation', 'story', 'quiz', 'reflection', 'completion'].map((type) => (
-              <button
-                key={type}
-                type="button"
-                className="bg-cream hover:bg-sun/20 text-navy font-baloo font-semibold text-[11px] py-1 px-2.5 rounded-lg border border-[#E3DCC8] transition-colors"
-                onClick={() => handleAddStep(type)}
-              >
-                + {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 p-1.5 bg-[#FAF7F0] rounded-xl border border-[#E3DCC8]">
-          {formData.steps.map((step, idx) => {
-            const hasAudio =
-              step.audioUrl ||
-              step.content?.introAudioUrl ||
-              step.content?.slides?.some((s) => s.audioUrl) ||
-              step.content?.questions?.some((q) => q.audioUrl) ||
-              step.content?.audioUrl;
-
-            return (
+              ⚙️ Setup
+            </button>
+            {formData.steps.map((step, idx) => (
               <button
                 key={idx}
                 type="button"
-                onClick={() => setActiveStepTab(idx)}
-                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-baloo text-xs font-semibold transition-all ${
-                  activeStepTab === idx
-                    ? 'bg-sun text-white shadow-sm'
-                    : 'bg-white text-navy hover:bg-cream border border-[#E3DCC8]'
+                onClick={() => setActiveTab(`step-${idx}`)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-baloo font-bold whitespace-nowrap ${
+                  activeTab === `step-${idx}` ? 'bg-sun text-white' : 'bg-cream text-navy'
                 }`}
               >
-                <span>
-                  {idx + 1}. {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
-                </span>
-                {hasAudio && (
-                  <span
-                    className={`text-[10px] px-1 rounded-full ${
-                      activeStepTab === idx ? 'bg-white text-sun font-bold' : 'text-grass font-bold'
-                    }`}
-                  >
-                    🎙️
-                  </span>
-                )}
+                {idx + 1}. {step.type}
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Active Step Content Editor */}
-      {currentStep && (
-        <div className="bg-[#FCFAF6] rounded-xl p-4 border-2 border-sun/30 mb-6">
-          <div className="flex flex-wrap justify-between items-center pb-3 mb-3 border-b border-[#E3DCC8]">
-            <div className="flex items-center gap-2">
-              <span className="bg-navy text-white font-baloo font-bold text-xs py-0.5 px-2.5 rounded-full">
-                Step {activeStepTab + 1}: {currentStep.type.toUpperCase()}
-              </span>
-              <input
-                type="text"
-                className="font-baloo font-bold text-navy text-base bg-white border border-[#E3DCC8] rounded-lg px-2 py-0.5 focus:border-sun focus:outline-none"
-                value={currentStep.title}
-                onChange={(e) =>
-                  updateStep(activeStepTab, (s) => ({ ...s, title: e.target.value }))
-                }
-              />
-            </div>
-            {formData.steps.length > 1 && (
-              <button
-                type="button"
-                className="text-xs text-coral hover:text-red-700 font-bold px-2 py-1 rounded hover:bg-red-50"
-                onClick={() => handleRemoveStep(activeStepTab)}
-              >
-                ✕ Delete Step
-              </button>
-            )}
+            ))}
           </div>
 
-          {/* 1. MEDITATION STEP */}
-          {currentStep.type === 'meditation' && (
-            <div className="space-y-4">
+          {/* TAB 1: LESSON DAY SETUP & METADATA */}
+          {activeTab === 'setup' && (
+            <div className="space-y-6 max-w-3xl">
               <div>
-                <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                  Breathing Intro Guidance (Read before breathing begins)
-                </label>
-                <textarea
-                  rows={3}
-                  className="w-full p-2.5 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white leading-relaxed"
-                  placeholder="Intro guidance text..."
-                  value={currentStep.content.intro || ''}
-                  onChange={(e) =>
-                    updateStep(activeStepTab, (s) => ({
-                      ...s,
-                      content: { ...s.content, intro: e.target.value }
-                    }))
-                  }
-                />
+                <h3 className="font-baloo font-bold text-navy text-lg mb-1">⚙️ General Lesson Information</h3>
+                <p className="text-xs text-[#7A8B99]">
+                  Configure the grade level, week, day sequence, and assigned character guide for this assessment day.
+                </p>
               </div>
 
-              {/* Meditation Intro Audio Slot */}
-              <AudioSlotManager
-                label="Meditation Intro Narration Audio"
-                hint={currentStep.content.intro}
-                audioUrl={currentStep.content.introAudioUrl || currentStep.audioUrl}
-                audioDuration={currentStep.content.introAudioDuration || currentStep.audioDuration || 0}
-                onChange={({ audioUrl, audioDuration }) => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl,
-                    audioDuration,
-                    content: {
-                      ...s.content,
-                      introAudioUrl: audioUrl,
-                      introAudioDuration: audioDuration
-                    }
-                  }));
-                }}
-                onRemove={() => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl: null,
-                    audioDuration: 0,
-                    content: {
-                      ...s.content,
-                      introAudioUrl: null,
-                      introAudioDuration: 0
-                    }
-                  }));
-                }}
-              />
+              <div className="bg-[#FAF7F0] p-5 rounded-2xl border border-[#E3DCC8] space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block font-baloo font-bold text-navy text-xs mb-1.5">Grade Level</label>
+                    <select
+                      className="w-full p-2.5 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                      value={formData.gradeId}
+                      onChange={(e) => {
+                        setSelectedGrade(e.target.value);
+                        const g = grades.find((gr) => gr.id === e.target.value);
+                        setFormData({
+                          ...formData,
+                          gradeId: e.target.value,
+                          weekId: g?.weeks[0]?.id || ''
+                        });
+                      }}
+                    >
+                      {grades.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block font-baloo font-bold text-navy text-xs mb-1.5">Curriculum Week</label>
+                    <select
+                      className="w-full p-2.5 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                      value={formData.weekId}
+                      onChange={(e) => setFormData({ ...formData, weekId: e.target.value })}
+                    >
+                      <option value="">Select a week</option>
+                      {grades
+                        .find((g) => g.id === selectedGrade)
+                        ?.weeks?.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            Week {w.weekNumber}: {w.title}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-baloo font-bold text-navy text-xs mb-1.5">Day Sequence (1-5)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="5"
+                      className="w-full p-2.5 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                      value={formData.dayNumber}
+                      onChange={(e) => setFormData({ ...formData, dayNumber: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-baloo font-bold text-navy text-xs mb-1.5">Guide Character</label>
+                    <select
+                      className="w-full p-2.5 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                      value={formData.guideName}
+                      onChange={(e) => setFormData({ ...formData, guideName: e.target.value })}
+                    >
+                      <option value="Sunny">☀️ Sunny the Sun</option>
+                      <option value="Owl">🦉 Ollie the Owl</option>
+                      <option value="Turtle">🐢 Toby the Turtle</option>
+                      <option value="Rabbit">🐰 Rosie the Rabbit</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                    Number of Breathing Cycles
-                  </label>
+                  <label className="block font-baloo font-bold text-navy text-xs mb-1.5">Lesson Day Title</label>
                   <input
-                    type="number"
-                    min="2"
-                    max="10"
-                    className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-                    value={currentStep.content.cycles || 5}
-                    onChange={(e) =>
-                      updateStep(activeStepTab, (s) => ({
-                        ...s,
-                        content: { ...s.content, cycles: parseInt(e.target.value) || 5 }
-                      }))
-                    }
+                    type="text"
+                    className="w-full p-3 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-sm font-semibold focus:border-sun focus:outline-none"
+                    placeholder="e.g., Welcome to Our Class Family"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
-                  <p className="text-[10px] text-[#7A8B99] mt-1">
-                    Each cycle is 8 seconds (4s Inhale + 4s Exhale) with gentle visual cues.
+                </div>
+              </div>
+
+              {/* Guide Character Preview Card */}
+              <div className="bg-cream/70 p-4 rounded-2xl border border-[#E3DCC8] flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white border border-[#E3DCC8] flex items-center justify-center text-3xl shadow-sm">
+                  {formData.guideName === 'Sunny' ? '☀️' : formData.guideName === 'Owl' ? '🦉' : formData.guideName === 'Turtle' ? '🐢' : '🐰'}
+                </div>
+                <div>
+                  <h4 className="font-baloo font-bold text-navy text-sm">
+                    {formData.guideName} will lead students on this assessment day
+                  </h4>
+                  <p className="text-xs text-[#7A8B99]">
+                    Nervous-system-friendly pacing, warm tone, calm narration, and interactive exercises.
                   </p>
                 </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('step-0')}
+                  className="btn-primary text-xs py-2 px-6"
+                >
+                  Proceed to Step 1: Meditation →
+                </button>
               </div>
             </div>
           )}
 
-          {/* 2. STORY STEP (MULTIPLE SLIDES WITH SEPARATE AUDIO PER SLIDE) */}
-          {currentStep.type === 'story' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="font-baloo font-bold text-navy text-xs sm:text-sm">
-                  Story Slides ({currentStep.content.slides?.length || 0} Slides)
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleAddSlide(activeStepTab)}
-                  className="btn-primary text-xs py-1 px-3"
-                >
-                  + Add Slide
-                </button>
+          {/* TAB 2: ACTIVE STEP CONTENT & AUDIO */}
+          {currentStep && activeStepIdx !== null && (
+            <div className="space-y-6 max-w-3xl">
+              {/* Step Header with Type & Title */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E3DCC8]">
+                <div className="flex items-center gap-2.5">
+                  <span className="px-3 py-1 rounded-full bg-navy text-white font-baloo font-bold text-xs uppercase tracking-wide">
+                    Step {activeStepIdx + 1} of {formData.steps.length}: {currentStep.type}
+                  </span>
+                  <input
+                    type="text"
+                    className="font-baloo font-bold text-navy text-lg bg-[#FAF7F0] border border-[#E3DCC8] rounded-xl px-3 py-1 focus:bg-white focus:border-sun focus:outline-none"
+                    value={currentStep.title}
+                    onChange={(e) =>
+                      updateStep(activeStepIdx, (s) => ({ ...s, title: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {formData.steps.length > 1 && (
+                  <button
+                    type="button"
+                    className="text-xs text-coral hover:text-red-700 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                    onClick={() => handleRemoveStep(activeStepIdx)}
+                  >
+                    🗑️ Delete Step
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-4">
-                {currentStep.content.slides?.map((slide, sIdx) => (
-                  <div
-                    key={sIdx}
-                    className="bg-white p-3.5 rounded-xl border-2 border-[#E3DCC8] shadow-sm relative"
-                  >
-                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-[#E3DCC8]/60">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-sun/20 text-sun-dark font-baloo font-bold text-xs py-0.5 px-2 rounded-md">
-                          Slide {sIdx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          className="font-baloo font-bold text-navy text-xs sm:text-sm border border-[#E3DCC8] rounded px-2 py-0.5"
-                          placeholder="Slide Title"
-                          value={slide.title}
-                          onChange={(e) =>
-                            handleSlideChange(activeStepTab, sIdx, 'title', e.target.value)
+              {/* 1. MEDITATION STEP */}
+              {currentStep.type === 'meditation' && (
+                <div className="space-y-5">
+                  <div className="bg-[#FAF7F0] p-4 rounded-2xl border border-[#E3DCC8] space-y-3">
+                    <label className="block font-baloo font-bold text-navy text-xs">
+                      Breathing Intro Guidance (Narration read before breathing begins)
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="w-full p-3 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none leading-relaxed"
+                      placeholder="Intro guidance text..."
+                      value={currentStep.content.intro || ''}
+                      onChange={(e) =>
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          content: { ...s.content, intro: e.target.value }
+                        }))
+                      }
+                    />
+
+                    {/* Meditation Audio Manager */}
+                    <AudioSlotManager
+                      label="Meditation Voice Narration"
+                      hint={currentStep.content.intro}
+                      audioUrl={currentStep.content.introAudioUrl || currentStep.audioUrl}
+                      audioDuration={currentStep.content.introAudioDuration || currentStep.audioDuration || 0}
+                      onChange={({ audioUrl, audioDuration }) => {
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl,
+                          audioDuration,
+                          content: {
+                            ...s.content,
+                            introAudioUrl: audioUrl,
+                            introAudioDuration: audioDuration
                           }
+                        }));
+                      }}
+                      onRemove={() => {
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl: null,
+                          audioDuration: 0,
+                          content: {
+                            ...s.content,
+                            introAudioUrl: null,
+                            introAudioDuration: 0
+                          }
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="bg-cream/60 p-4 rounded-2xl border border-[#E3DCC8]">
+                    <label className="block font-baloo font-bold text-navy text-xs mb-1">
+                      Number of Breathing Cycles (8s per cycle: 4s Inhale + 4s Exhale)
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="10"
+                      className="w-32 p-2 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-bold focus:border-sun focus:outline-none"
+                      value={currentStep.content.cycles || 5}
+                      onChange={(e) =>
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          content: { ...s.content, cycles: parseInt(e.target.value) || 5 }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 2. STORY STEP (MULTIPLE SLIDES) */}
+              {currentStep.type === 'story' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-baloo font-bold text-navy text-sm">
+                      Story Narrative Slides ({currentStep.content.slides?.length || 0})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSlide(activeStepIdx)}
+                      className="btn-primary text-xs py-1.5 px-3"
+                    >
+                      + Add Slide
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {currentStep.content.slides?.map((slide, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className="bg-[#FAF7F0] p-4 rounded-2xl border border-[#E3DCC8] space-y-3"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-[#E3DCC8]">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-sun text-white font-baloo font-bold text-xs">
+                              Slide {sIdx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              className="font-baloo font-bold text-navy text-xs sm:text-sm bg-white border border-[#E3DCC8] rounded-lg px-2 py-1"
+                              placeholder="Slide Title"
+                              value={slide.title}
+                              onChange={(e) =>
+                                handleSlideChange(activeStepIdx, sIdx, 'title', e.target.value)
+                              }
+                            />
+                          </div>
+                          {currentStep.content.slides.length > 1 && (
+                            <button
+                              type="button"
+                              className="text-xs text-coral hover:text-red-700 font-bold"
+                              onClick={() => handleRemoveSlide(activeStepIdx, sIdx)}
+                            >
+                              ✕ Delete Slide
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="block font-baloo font-bold text-navy text-xs mb-1">
+                              Slide Narrative Text
+                            </label>
+                            <textarea
+                              rows={2}
+                              className="w-full p-2 bg-white border border-[#E3DCC8] rounded-xl font-nunito text-xs focus:border-sun focus:outline-none"
+                              placeholder="Slide story text..."
+                              value={slide.text}
+                              onChange={(e) =>
+                                handleSlideChange(activeStepIdx, sIdx, 'text', e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-baloo font-bold text-navy text-xs mb-1">
+                              Visual Animation
+                            </label>
+                            <select
+                              className="w-full p-2 bg-white border border-[#E3DCC8] rounded-xl font-nunito text-xs focus:border-sun focus:outline-none"
+                              value={slide.visual}
+                              onChange={(e) =>
+                                handleSlideChange(activeStepIdx, sIdx, 'visual', e.target.value)
+                              }
+                            >
+                              {visualOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Individual Slide Audio */}
+                        <AudioSlotManager
+                          label={`Slide ${sIdx + 1} Audio Narration`}
+                          hint={slide.text}
+                          audioUrl={slide.audioUrl}
+                          audioDuration={slide.audioDuration || 0}
+                          onChange={({ audioUrl, audioDuration }) => {
+                            handleSlideChange(activeStepIdx, sIdx, 'audioUrl', audioUrl);
+                            handleSlideChange(activeStepIdx, sIdx, 'audioDuration', audioDuration);
+                          }}
+                          onRemove={() => {
+                            handleSlideChange(activeStepIdx, sIdx, 'audioUrl', null);
+                            handleSlideChange(activeStepIdx, sIdx, 'audioDuration', 0);
+                          }}
                         />
                       </div>
-                      {currentStep.content.slides.length > 1 && (
-                        <button
-                          type="button"
-                          className="text-xs text-coral hover:text-red-700 font-bold"
-                          onClick={() => handleRemoveSlide(activeStepTab, sIdx)}
-                        >
-                          ✕ Delete Slide
-                        </button>
-                      )}
-                    </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
-                      <div className="sm:col-span-2">
-                        <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                          Slide Text
+              {/* 3. QUIZ / CHECK-IN STEP */}
+              {currentStep.type === 'quiz' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-baloo font-bold text-navy text-sm">
+                      Check-In Comprehension Questions ({currentStep.content.questions?.length || 0})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuestion(activeStepIdx)}
+                      className="btn-primary text-xs py-1.5 px-3"
+                    >
+                      + Add Question
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {currentStep.content.questions?.map((q, qIdx) => (
+                      <div
+                        key={qIdx}
+                        className="bg-[#FAF7F0] p-4 rounded-2xl border border-[#E3DCC8] space-y-3"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-[#E3DCC8]">
+                          <span className="px-2 py-0.5 rounded-md bg-sky text-white font-baloo font-bold text-xs">
+                            Question {qIdx + 1}
+                          </span>
+                          {currentStep.content.questions.length > 1 && (
+                            <button
+                              type="button"
+                              className="text-xs text-coral hover:text-red-700 font-bold"
+                              onClick={() => handleRemoveQuestion(activeStepIdx, qIdx)}
+                            >
+                              ✕ Delete Question
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block font-baloo font-bold text-navy text-xs mb-1">
+                            Question Prompt
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full p-2.5 bg-white border border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                            placeholder="e.g., How did Sunny feel at the start?"
+                            value={q.question}
+                            onChange={(e) =>
+                              handleQuestionChange(activeStepIdx, qIdx, 'question', e.target.value)
+                            }
+                          />
+                        </div>
+
+                        {/* Question Audio */}
+                        <AudioSlotManager
+                          label={`Question ${qIdx + 1} Audio Narration`}
+                          hint={q.question}
+                          audioUrl={q.audioUrl}
+                          audioDuration={q.audioDuration || 0}
+                          onChange={({ audioUrl, audioDuration }) => {
+                            handleQuestionChange(activeStepIdx, qIdx, 'audioUrl', audioUrl);
+                            handleQuestionChange(activeStepIdx, qIdx, 'audioDuration', audioDuration);
+                          }}
+                          onRemove={() => {
+                            handleQuestionChange(activeStepIdx, qIdx, 'audioUrl', null);
+                            handleQuestionChange(activeStepIdx, qIdx, 'audioDuration', 0);
+                          }}
+                        />
+
+                        {/* Answer Choices */}
+                        <div className="bg-white p-3 rounded-xl border border-[#E3DCC8] space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-baloo font-bold text-navy text-xs">
+                              Answer Choices (Select correct answer):
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddOption(activeStepIdx, qIdx)}
+                              className="text-[11px] font-bold text-sky hover:underline"
+                            >
+                              + Add Option
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {q.options?.map((opt, optIdx) => (
+                              <div
+                                key={optIdx}
+                                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                                  opt.correct
+                                    ? 'bg-[#E4F4E8] border-grass'
+                                    : 'bg-[#FAF7F0] border-[#E3DCC8]'
+                                }`}
+                              >
+                                <select
+                                  className="p-1 border border-[#E3DCC8] rounded-lg text-sm bg-white"
+                                  value={opt.emoji}
+                                  onChange={(e) =>
+                                    handleOptionChange(
+                                      activeStepIdx,
+                                      qIdx,
+                                      optIdx,
+                                      'emoji',
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  {emojiOptions.map((em) => (
+                                    <option key={em} value={em}>
+                                      {em}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <input
+                                  type="text"
+                                  className="flex-1 p-1.5 bg-white border border-[#E3DCC8] rounded-lg font-nunito text-xs"
+                                  placeholder={`Option ${optIdx + 1}`}
+                                  value={opt.text}
+                                  onChange={(e) =>
+                                    handleOptionChange(
+                                      activeStepIdx,
+                                      qIdx,
+                                      optIdx,
+                                      'text',
+                                      e.target.value
+                                    )
+                                  }
+                                />
+
+                                <label className="flex items-center gap-1.5 text-xs font-baloo font-bold cursor-pointer whitespace-nowrap pl-2">
+                                  <input
+                                    type="radio"
+                                    name={`correct-${activeStepIdx}-${qIdx}`}
+                                    checked={opt.correct}
+                                    onChange={() =>
+                                      handleSetCorrectOption(activeStepIdx, qIdx, optIdx)
+                                    }
+                                  />
+                                  <span className={opt.correct ? 'text-grass' : 'text-[#7A8B99]'}>
+                                    {opt.correct ? '✓ Correct' : 'Mark'}
+                                  </span>
+                                </label>
+
+                                {q.options.length > 2 && (
+                                  <button
+                                    type="button"
+                                    className="text-coral hover:text-red-700 font-bold text-xs px-1"
+                                    onClick={() => handleRemoveOption(activeStepIdx, qIdx, optIdx)}
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. REFLECTION STEP */}
+              {currentStep.type === 'reflection' && (
+                <div className="space-y-4">
+                  <div className="bg-[#FAF7F0] p-4 rounded-2xl border border-[#E3DCC8] space-y-3">
+                    <label className="block font-baloo font-bold text-navy text-xs">
+                      Reflection Prompt (Student turn to share with peers)
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="w-full p-3 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none leading-relaxed"
+                      placeholder="e.g., Turn to your neighbor and wave..."
+                      value={currentStep.content.text || ''}
+                      onChange={(e) =>
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          content: { ...s.content, text: e.target.value }
+                        }))
+                      }
+                    />
+
+                    {/* Reflection Audio */}
+                    <AudioSlotManager
+                      label="Reflection Prompt Audio"
+                      hint={currentStep.content.text}
+                      audioUrl={currentStep.content.audioUrl || currentStep.audioUrl}
+                      audioDuration={currentStep.content.audioDuration || currentStep.audioDuration || 0}
+                      onChange={({ audioUrl, audioDuration }) => {
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl,
+                          audioDuration,
+                          content: { ...s.content, audioUrl, audioDuration }
+                        }));
+                      }}
+                      onRemove={() => {
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl: null,
+                          audioDuration: 0,
+                          content: { ...s.content, audioUrl: null, audioDuration: 0 }
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 5. COMPLETION STEP */}
+              {currentStep.type === 'completion' && (
+                <div className="space-y-4">
+                  <div className="bg-[#FAF7F0] p-4 rounded-2xl border border-[#E3DCC8] space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="sm:col-span-3">
+                        <label className="block font-baloo font-bold text-navy text-xs mb-1">
+                          Celebration Message
                         </label>
-                        <textarea
-                          rows={2}
-                          className="w-full p-2 border border-[#E3DCC8] rounded-lg font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none"
-                          placeholder="Write slide narrative..."
-                          value={slide.text}
+                        <input
+                          type="text"
+                          className="w-full p-2.5 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs font-semibold focus:border-sun focus:outline-none"
+                          placeholder="e.g., Nice work finishing this day with Sunny!"
+                          value={currentStep.content.message || ''}
                           onChange={(e) =>
-                            handleSlideChange(activeStepTab, sIdx, 'text', e.target.value)
+                            updateStep(activeStepIdx, (s) => ({
+                              ...s,
+                              content: { ...s.content, message: e.target.value }
+                            }))
                           }
                         />
                       </div>
                       <div>
-                        <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                          Slide Visual Art
-                        </label>
-                        <select
-                          className="w-full p-2 border border-[#E3DCC8] rounded-lg font-nunito text-xs focus:border-sun focus:outline-none bg-white"
-                          value={slide.visual}
+                        <label className="block font-baloo font-bold text-navy text-xs mb-1">Badge Icon</label>
+                        <input
+                          type="text"
+                          className="w-full p-2 bg-white border-2 border-[#E3DCC8] rounded-xl font-nunito text-center text-lg"
+                          value={currentStep.content.badge || '⭐'}
                           onChange={(e) =>
-                            handleSlideChange(activeStepTab, sIdx, 'visual', e.target.value)
+                            updateStep(activeStepIdx, (s) => ({
+                              ...s,
+                              content: { ...s.content, badge: e.target.value }
+                            }))
                           }
-                        >
-                          {visualOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
                     </div>
 
-                    {/* Separate Audio for THIS Slide */}
+                    {/* Completion Audio */}
                     <AudioSlotManager
-                      label={`Slide ${sIdx + 1} Audio Narration`}
-                      hint={slide.text}
-                      audioUrl={slide.audioUrl}
-                      audioDuration={slide.audioDuration || 0}
+                      label="Celebration Cheer Audio"
+                      hint={currentStep.content.message}
+                      audioUrl={currentStep.content.audioUrl || currentStep.audioUrl}
+                      audioDuration={currentStep.content.audioDuration || currentStep.audioDuration || 0}
                       onChange={({ audioUrl, audioDuration }) => {
-                        handleSlideChange(activeStepTab, sIdx, 'audioUrl', audioUrl);
-                        handleSlideChange(activeStepTab, sIdx, 'audioDuration', audioDuration);
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl,
+                          audioDuration,
+                          content: { ...s.content, audioUrl, audioDuration }
+                        }));
                       }}
                       onRemove={() => {
-                        handleSlideChange(activeStepTab, sIdx, 'audioUrl', null);
-                        handleSlideChange(activeStepTab, sIdx, 'audioDuration', 0);
+                        updateStep(activeStepIdx, (s) => ({
+                          ...s,
+                          audioUrl: null,
+                          audioDuration: 0,
+                          content: { ...s.content, audioUrl: null, audioDuration: 0 }
+                        }));
                       }}
                     />
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* 3. QUIZ / CHECK-IN STEP (MULTIPLE QUESTIONS WITH SEPARATE AUDIO PER QUESTION) */}
-          {currentStep.type === 'quiz' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="font-baloo font-bold text-navy text-xs sm:text-sm">
-                  Check-In Questions ({currentStep.content.questions?.length || 0} Questions)
-                </span>
+              {/* Bottom Navigation between steps */}
+              <div className="flex items-center justify-between pt-4 border-t border-[#E3DCC8]">
                 <button
                   type="button"
-                  onClick={() => handleAddQuestion(activeStepTab)}
-                  className="btn-primary text-xs py-1 px-3"
+                  onClick={() => {
+                    if (activeStepIdx === 0) {
+                      setActiveTab('setup');
+                    } else {
+                      setActiveTab(`step-${activeStepIdx - 1}`);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-[#E3DCC8] text-xs font-baloo font-bold text-navy hover:bg-cream"
                 >
-                  + Add Question
+                  ← Previous
                 </button>
-              </div>
 
-              <div className="space-y-4">
-                {currentStep.content.questions?.map((q, qIdx) => (
-                  <div
-                    key={qIdx}
-                    className="bg-white p-3.5 rounded-xl border-2 border-[#E3DCC8] shadow-sm"
+                {activeStepIdx < formData.steps.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(`step-${activeStepIdx + 1}`)}
+                    className="btn-primary text-xs py-1.5 px-4"
                   >
-                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-[#E3DCC8]/60">
-                      <span className="bg-sky/20 text-navy font-baloo font-bold text-xs py-0.5 px-2 rounded-md">
-                        Question {qIdx + 1}
-                      </span>
-                      {currentStep.content.questions.length > 1 && (
-                        <button
-                          type="button"
-                          className="text-xs text-coral hover:text-red-700 font-bold"
-                          onClick={() => handleRemoveQuestion(activeStepTab, qIdx)}
-                        >
-                          ✕ Delete Question
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="mb-2">
-                      <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                        Question Prompt
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none"
-                        placeholder="e.g., How did Sunny feel at the start?"
-                        value={q.question}
-                        onChange={(e) =>
-                          handleQuestionChange(activeStepTab, qIdx, 'question', e.target.value)
-                        }
-                      />
-                    </div>
-
-                    {/* Question Narration Audio */}
-                    <AudioSlotManager
-                      label={`Question ${qIdx + 1} Audio Narration`}
-                      hint={q.question}
-                      audioUrl={q.audioUrl}
-                      audioDuration={q.audioDuration || 0}
-                      onChange={({ audioUrl, audioDuration }) => {
-                        handleQuestionChange(activeStepTab, qIdx, 'audioUrl', audioUrl);
-                        handleQuestionChange(activeStepTab, qIdx, 'audioDuration', audioDuration);
-                      }}
-                      onRemove={() => {
-                        handleQuestionChange(activeStepTab, qIdx, 'audioUrl', null);
-                        handleQuestionChange(activeStepTab, qIdx, 'audioDuration', 0);
-                      }}
-                    />
-
-                    {/* Options list */}
-                    <div className="mt-3 bg-cream p-2.5 rounded-xl border border-[#E3DCC8]">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="font-baloo font-bold text-navy text-xs">
-                          Answer Options (Select the correct one):
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleAddOption(activeStepTab, qIdx)}
-                          className="text-[11px] text-sky font-bold hover:underline"
-                        >
-                          + Add Option
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        {q.options?.map((opt, optIdx) => (
-                          <div
-                            key={optIdx}
-                            className={`flex flex-wrap items-center gap-2 p-2 rounded-lg border transition-all ${
-                              opt.correct
-                                ? 'bg-[#E4F4E8] border-grass'
-                                : 'bg-white border-[#E3DCC8]'
-                            }`}
-                          >
-                            <select
-                              className="p-1 border border-[#E3DCC8] rounded text-base bg-white"
-                              value={opt.emoji}
-                              onChange={(e) =>
-                                handleOptionChange(
-                                  activeStepTab,
-                                  qIdx,
-                                  optIdx,
-                                  'emoji',
-                                  e.target.value
-                                )
-                              }
-                            >
-                              {emojiOptions.map((em) => (
-                                <option key={em} value={em}>
-                                  {em}
-                                </option>
-                              ))}
-                            </select>
-
-                            <input
-                              type="text"
-                              className="flex-1 min-w-[120px] p-1.5 border border-[#E3DCC8] rounded-lg font-nunito text-xs sm:text-sm bg-white"
-                              placeholder={`Option ${optIdx + 1} text`}
-                              value={opt.text}
-                              onChange={(e) =>
-                                handleOptionChange(
-                                  activeStepTab,
-                                  qIdx,
-                                  optIdx,
-                                  'text',
-                                  e.target.value
-                                )
-                              }
-                            />
-
-                            <label className="flex items-center gap-1 text-xs font-baloo font-bold cursor-pointer whitespace-nowrap">
-                              <input
-                                type="radio"
-                                name={`correct-${activeStepTab}-${qIdx}`}
-                                checked={opt.correct}
-                                onChange={() =>
-                                  handleSetCorrectOption(activeStepTab, qIdx, optIdx)
-                                }
-                              />
-                              <span className={opt.correct ? 'text-grass' : 'text-navy'}>
-                                {opt.correct ? '✓ Correct Answer' : 'Mark Correct'}
-                              </span>
-                            </label>
-
-                            {q.options.length > 2 && (
-                              <button
-                                type="button"
-                                className="text-coral hover:text-red-700 font-bold text-xs px-1"
-                                onClick={() =>
-                                  handleRemoveOption(activeStepTab, qIdx, optIdx)
-                                }
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    Next Step →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="btn-primary text-xs py-2 px-6"
+                  >
+                    💾 Save All Changes
+                  </button>
+                )}
               </div>
             </div>
           )}
-
-          {/* 4. REFLECTION STEP */}
-          {currentStep.type === 'reflection' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                  Reflection Activity Prompt
-                </label>
-                <textarea
-                  rows={3}
-                  className="w-full p-2.5 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white leading-relaxed"
-                  placeholder="Now it's your turn! Stand up and..."
-                  value={currentStep.content.text || ''}
-                  onChange={(e) =>
-                    updateStep(activeStepTab, (s) => ({
-                      ...s,
-                      content: { ...s.content, text: e.target.value }
-                    }))
-                  }
-                />
-              </div>
-
-              {/* Reflection Audio Slot */}
-              <AudioSlotManager
-                label="Reflection Prompt Audio Narration"
-                hint={currentStep.content.text}
-                audioUrl={currentStep.content.audioUrl || currentStep.audioUrl}
-                audioDuration={currentStep.content.audioDuration || currentStep.audioDuration || 0}
-                onChange={({ audioUrl, audioDuration }) => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl,
-                    audioDuration,
-                    content: { ...s.content, audioUrl, audioDuration }
-                  }));
-                }}
-                onRemove={() => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl: null,
-                    audioDuration: 0,
-                    content: { ...s.content, audioUrl: null, audioDuration: 0 }
-                  }));
-                }}
-              />
-            </div>
-          )}
-
-          {/* 5. COMPLETION STEP */}
-          {currentStep.type === 'completion' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="sm:col-span-3">
-                  <label className="block font-baloo font-semibold text-navy text-xs mb-1">
-                    Completion & Celebration Message
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-xs sm:text-sm focus:border-sun focus:outline-none bg-white"
-                    placeholder="Nice work finishing this day with Sunny!"
-                    value={currentStep.content.message || ''}
-                    onChange={(e) =>
-                      updateStep(activeStepTab, (s) => ({
-                        ...s,
-                        content: { ...s.content, message: e.target.value }
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block font-baloo font-semibold text-navy text-xs mb-1">Badge Emoji</label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border-2 border-[#E3DCC8] rounded-xl font-nunito text-center text-lg bg-white"
-                    value={currentStep.content.badge || '⭐'}
-                    onChange={(e) =>
-                      updateStep(activeStepTab, (s) => ({
-                        ...s,
-                        content: { ...s.content, badge: e.target.value }
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Completion Audio Slot */}
-              <AudioSlotManager
-                label="Celebration Cheer Audio Narration"
-                hint={currentStep.content.message}
-                audioUrl={currentStep.content.audioUrl || currentStep.audioUrl}
-                audioDuration={currentStep.content.audioDuration || currentStep.audioDuration || 0}
-                onChange={({ audioUrl, audioDuration }) => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl,
-                    audioDuration,
-                    content: { ...s.content, audioUrl, audioDuration }
-                  }));
-                }}
-                onRemove={() => {
-                  updateStep(activeStepTab, (s) => ({
-                    ...s,
-                    audioUrl: null,
-                    audioDuration: 0,
-                    content: { ...s.content, audioUrl: null, audioDuration: 0 }
-                  }));
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Footer Buttons */}
-      <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-[#E3DCC8]">
-        <span className="text-xs text-[#7A8B99]">
-          💡 Note: All audio clips automatically synchronize with slide timers and never overlap.
-        </span>
-        <div className="flex items-center gap-2">
-          <button type="button" className="btn-secondary text-sm py-2 px-4" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="button" className="btn-primary text-sm py-2 px-6" onClick={handleSubmit}>
-            💾 Save All Changes
-          </button>
         </div>
       </div>
     </div>
